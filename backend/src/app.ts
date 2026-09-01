@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import cors from "cors";
 import authRoutes from "./modules/auth/auth.route";
 import profileRoutes from "./modules/profile/profile.route";
@@ -28,7 +28,7 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => {
     res.status(200).json({
         success: true,
-        message: "VitalSync Backend API is running 🚀",
+        message: "VitalSync Backend API is running",
     });
 });
 
