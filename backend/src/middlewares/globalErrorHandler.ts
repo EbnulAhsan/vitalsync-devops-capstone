@@ -1,10 +1,14 @@
-import { NextFunction, Request, Response } from "express";
+﻿import { NextFunction, Request, Response } from "express";
+
+type ApplicationError = Error & {
+    statusCode?: number;
+};
 
 export const globalErrorHandler = (
-    error: any,
-    req: Request,
+    error: ApplicationError,
+    _req: Request,
     res: Response,
-    next: NextFunction
+    _next: NextFunction
 ) => {
     const statusCode = error.statusCode || 500;
     const message = error.message || "Something went wrong";
