@@ -1,0 +1,74 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vitalsync-frontend
+  namespace: vitalsync-dev
+  labels:
+    app: vitalsync-frontend
+    environment: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vitalsync-frontend
+      environment: development
+  template:
+    metadata:
+      labels:
+        app: vitalsync-frontend
+        environment: development
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/ebnulahsan/vitalsync-frontend:dev-720d437
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: development
+            - name: NEXT_PUBLIC_API_URL
+              value: http://13.212.192.19:30050/api/v1
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vitalsync-frontend
+  namespace: vitalsync-dev
+  labels:
+    app: vitalsync-frontend
+    environment: development
+spec:
+  type: NodePort
+  selector:
+    app: vitalsync-frontend
+    environment: development
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+      nodePort: 30080
