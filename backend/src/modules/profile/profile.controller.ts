@@ -1,4 +1,4 @@
-import { Response } from "express";
+﻿import { Response } from "express";
 import { AuthRequest } from "../../middlewares/auth.middleware";
 import { ProfileService } from "./profile.service";
 
@@ -20,10 +20,13 @@ const getMyProfile = async (req: AuthRequest, res: Response) => {
             message: "Profile retrieved successfully",
             data: result,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message =
+            error instanceof Error ? error.message : "Failed to get profile";
+
         res.status(400).json({
             success: false,
-            message: error.message || "Failed to get profile",
+            message,
         });
     }
 };
@@ -46,10 +49,15 @@ const updateMyProfile = async (req: AuthRequest, res: Response) => {
             message: "Profile updated successfully",
             data: result,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message =
+            error instanceof Error
+                ? error.message
+                : "Failed to update profile";
+
         res.status(400).json({
             success: false,
-            message: error.message || "Failed to update profile",
+            message,
         });
     }
 };
