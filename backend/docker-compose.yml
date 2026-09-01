@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: vitalsync-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345
+      POSTGRES_DB: vitalsync_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - vitalsync-postgres-data:/var/lib/postgresql/data
+    networks:
+      - vitalsync-network
+
+  backend:
+    build: .
+    container_name: vitalsync-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    networks:
+      - vitalsync-network
+
+volumes:
+  vitalsync-postgres-data:
+
+networks:
+  vitalsync-network:
+    driver: bridge

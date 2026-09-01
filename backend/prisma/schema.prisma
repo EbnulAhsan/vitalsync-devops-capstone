@@ -1,0 +1,214 @@
+
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===================================
+// ENUMS
+// ===================================
+
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  VERY_ACTIVE
+}
+
+enum BMICategory {
+  UNDERWEIGHT
+  NORMAL
+  OVERWEIGHT
+  OBESE
+}
+
+enum GoalType {
+  WEIGHT
+  WATER
+  SLEEP
+  CALORIES
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  FAILED
+}
+
+// ===================================
+// MODELS
+// ===================================
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  passwordHash    String
+  role            Role     @default(USER)
+  isEmailVerified Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  profile        Profile?
+  bmiRecords     BMIRecord[]
+  weightHistory  WeightHistory[]
+  waterHistory   WaterHistory[]
+  sleepHistory   SleepHistory[]
+  goals          Goal[]
+  activityLogs   ActivityLog[]
+  refreshTokens  RefreshToken[]
+  notifications  Notification[]
+  sessions       Session[]
+
+  @@index([email])
+}
+
+model Profile {
+  id             String         @id @default(cuid())
+  userId         String         @unique
+  fullName       String?
+  avatarUrl      String?
+  gender         Gender?
+  dateOfBirth    DateTime?
+  heightCm       Float?
+  activityLevel  ActivityLevel? @default(MODERATE)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model BMIRecord {
+  id         String      @id @default(cuid())
+  userId     String
+  weightKg   Float
+  heightCm   Float
+  bmiValue   Float
+  category   BMICategory
+  recordedAt DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt])
+}
+
+model WeightHistory {
+  id         String   @id @default(cuid())
+  userId     String
+  weightKg   Float
+  note       String?
+  recordedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt])
+}
+
+model WaterHistory {
+  id         String   @id @default(cuid())
+  userId     String
+  amountMl   Int
+  recordedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt])
+}
+
+model SleepHistory {
+  id           String   @id @default(cuid())
+  userId       String
+  durationMins Int
+  quality      String?
+  recordedAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt])
+}
+
+model Goal {
+  id           String     @id @default(cuid())
+  userId       String
+  type         GoalType
+  targetValue  Float
+  currentValue Float      @default(0)
+  deadline     DateTime?
+  status       GoalStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  isRevoked  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  ipAddress    String?
+  userAgent    String?
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
