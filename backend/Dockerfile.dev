@@ -4,6 +4,9 @@ WORKDIR /app
 
 ENV NODE_ENV=development
 
+ARG DATABASE_URL=postgresql://postgres:postgres@localhost:5432/vitalsync
+ENV DATABASE_URL=$DATABASE_URL
+
 COPY package.json package-lock.json ./
 
 RUN npm ci
@@ -12,6 +15,8 @@ COPY prisma ./prisma
 COPY prisma.config.ts ./
 COPY tsconfig.json ./
 COPY src ./src
+
+RUN npm run prisma:generate
 
 EXPOSE 5000
 
