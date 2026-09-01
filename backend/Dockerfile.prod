@@ -15,6 +15,7 @@ ARG DATABASE_URL=postgresql://postgres:postgres@localhost:5432/vitalsync
 ENV DATABASE_URL=$DATABASE_URL
 
 COPY --from=dependencies /app/node_modules ./node_modules
+COPY package.json package-lock.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 COPY tsconfig.json ./
@@ -42,3 +43,4 @@ USER node
 EXPOSE 5000
 
 CMD ["node", "dist/server.js"]
+
