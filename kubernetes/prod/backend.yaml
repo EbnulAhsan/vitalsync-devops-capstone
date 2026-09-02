@@ -20,7 +20,7 @@ spec:
     spec:
       initContainers:
         - name: database-migration
-          image: ghcr.io/ebnulahsan/vitalsync-backend:prod-3507d90
+          image: ghcr.io/ebnulahsan/vitalsync-backend:prod-875d2c2
           command:
             - sh
             - -c
@@ -33,7 +33,7 @@ spec:
                   key: database-url
       containers:
         - name: backend
-          image: ghcr.io/ebnulahsan/vitalsync-backend:prod-3507d90
+          image: ghcr.io/ebnulahsan/vitalsync-backend:prod-875d2c2
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
