@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 env:
@@ -72,3 +72,38 @@ jobs:
             dev.vitalsync.environment=development
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+
+  update-development-manifests:
+    name: Update Development GitOps Manifests
+    runs-on: ubuntu-latest
+    needs: publish-development-images
+
+    steps:
+      - name: Checkout dev branch
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - name: Update development image tags
+        shell: bash
+        run: |
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          sed -i -E "s|ghcr.io/ebnulahsan/vitalsync-frontend:dev-[a-f0-9]+|ghcr.io/ebnulahsan/vitalsync-frontend:dev-${SHORT_SHA}|g" kubernetes/dev/frontend.yaml
+          sed -i -E "s|ghcr.io/ebnulahsan/vitalsync-backend:dev-[a-f0-9]+|ghcr.io/ebnulahsan/vitalsync-backend:dev-${SHORT_SHA}|g" kubernetes/dev/backend.yaml
+
+      - name: Commit development manifest update
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kubernetes/dev/frontend.yaml kubernetes/dev/backend.yaml
+
+          if git diff --cached --quiet; then
+            echo "Development manifests already use this commit version."
+            exit 0
+          fi
+
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          git commit -m "gitops: deploy development images dev-${SHORT_SHA}"
+          git push origin HEAD:dev
