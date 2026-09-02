@@ -9,10 +9,15 @@ COPY package.json package-lock.json ./
 
 RUN npm ci
 
-COPY . .
+COPY --chown=node:node . .
+
+RUN mkdir -p /app/.next && chown node:node /app && chown -R node:node /app/.next
 
 EXPOSE 3000
 
 USER node
 
 CMD ["npm", "run", "dev", "--", "-H", "0.0.0.0"]
+
+
+
