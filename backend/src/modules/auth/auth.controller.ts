@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+﻿import { Request, Response } from "express";
 import { AuthService } from "./auth.service";
 
 const registerUser = async (req: Request, res: Response) => {
@@ -10,10 +10,13 @@ const registerUser = async (req: Request, res: Response) => {
             message: "User registered successfully",
             data: result,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message =
+            error instanceof Error ? error.message : "Registration failed";
+
         res.status(400).json({
             success: false,
-            message: error.message || "Registration failed",
+            message,
         });
     }
 };
@@ -27,10 +30,13 @@ const loginUser = async (req: Request, res: Response) => {
             message: "User logged in successfully",
             data: result,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message =
+            error instanceof Error ? error.message : "Login failed";
+
         res.status(401).json({
             success: false,
-            message: error.message || "Login failed",
+            message,
         });
     }
 };

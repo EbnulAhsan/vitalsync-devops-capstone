@@ -1,0 +1,119 @@
+﻿name: Publish Staging Images
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+  publish-staging-images:
+    name: Publish ${{ matrix.component }} Staging Image
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: frontend
+            context: frontend
+            dockerfile: frontend/Dockerfile.prod
+
+          - component: backend
+            context: backend
+            dockerfile: backend/Dockerfile.prod
+
+    steps:
+      - name: Checkout stage branch
+        uses: actions/checkout@v4
+        with:
+          ref: stage
+
+      - name: Set lowercase image name
+        id: image
+        shell: bash
+        run: |
+          repository_owner=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "name=ghcr.io/${repository_owner}/vitalsync-${{ matrix.component }}" >> "$GITHUB_OUTPUT"
+
+      - name: Set short commit SHA
+        id: version
+        shell: bash
+        run: |
+          echo "short_sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and publish staging image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          build-args: ${{ matrix.component == 'frontend' && 'NEXT_PUBLIC_API_URL=http://47.129.153.103:30051/api/v1' || '' }}
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:stage-${{ steps.version.outputs.short_sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=stage-${{ steps.version.outputs.short_sha }}
+            dev.vitalsync.environment=staging
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+
+  update-staging-manifests:
+    name: Update Staging GitOps Manifests
+    runs-on: ubuntu-latest
+    needs: publish-staging-images
+
+    steps:
+      - name: Checkout stage branch
+        uses: actions/checkout@v4
+        with:
+          ref: stage
+
+      - name: Update staging image tags
+        shell: bash
+        run: |
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          sed -i -E "s|ghcr.io/ebnulahsan/vitalsync-frontend:stage-[a-f0-9]+|ghcr.io/ebnulahsan/vitalsync-frontend:stage-${SHORT_SHA}|g" kubernetes/stage/frontend.yaml
+          sed -i -E "s|ghcr.io/ebnulahsan/vitalsync-backend:stage-[a-f0-9]+|ghcr.io/ebnulahsan/vitalsync-backend:stage-${SHORT_SHA}|g" kubernetes/stage/backend.yaml
+
+      - name: Commit staging manifest update
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kubernetes/stage/frontend.yaml kubernetes/stage/backend.yaml
+
+          if git diff --cached --quiet; then
+            echo "Staging manifests already use this commit version."
+            exit 0
+          fi
+
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          git commit -m "gitops: deploy staging images stage-${SHORT_SHA}"
+          git push origin HEAD:stage
+
+
+
+
+
+
+
+
+

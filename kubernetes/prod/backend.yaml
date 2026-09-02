@@ -1,0 +1,106 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vitalsync-backend
+  namespace: vitalsync-prod
+  labels:
+    app: vitalsync-backend
+    environment: production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vitalsync-backend
+      environment: production
+  template:
+    metadata:
+      labels:
+        app: vitalsync-backend
+        environment: production
+    spec:
+      initContainers:
+        - name: database-migration
+          image: ghcr.io/ebnulahsan/vitalsync-backend:prod-875d2c2
+          command:
+            - sh
+            - -c
+            - npx prisma migrate deploy
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vitalsync-prod-secrets
+                  key: database-url
+      containers:
+        - name: backend
+          image: ghcr.io/ebnulahsan/vitalsync-backend:prod-875d2c2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "5000"
+            - name: CLIENT_URL
+              value: http://47.129.153.103:30082
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vitalsync-prod-secrets
+                  key: database-url
+            - name: JWT_ACCESS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vitalsync-prod-secrets
+                  key: jwt-access-secret
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 25
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vitalsync-backend
+  namespace: vitalsync-prod
+  labels:
+    app: vitalsync-backend
+    environment: production
+spec:
+  type: NodePort
+  selector:
+    app: vitalsync-backend
+    environment: production
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+      nodePort: 30052
+
+
+
+
+
+
+
+
+
+
+

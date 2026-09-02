@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import { api } from "@/lib/api";
@@ -13,7 +13,7 @@ import {
     RefreshCw,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type WaterRecord = {
     id: string;
@@ -66,7 +66,7 @@ export default function WaterPage() {
     const [errorMessage, setErrorMessage] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
 
-    const fetchWaterData = async () => {
+    const fetchWaterData = useCallback(async () => {
         try {
             setLoading(true);
             setErrorMessage("");
@@ -95,11 +95,11 @@ export default function WaterPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [router]);
 
     useEffect(() => {
         fetchWaterData();
-    }, []);
+    }, [fetchWaterData]);
 
     const handleAddWater = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -320,7 +320,7 @@ export default function WaterPage() {
                         className="rounded-[2rem] border border-white/10 bg-white/[0.055] p-6 backdrop-blur-xl"
                     >
                         <div className="mb-6">
-                            <p className="text-sm text-cyan-300">Today's Progress</p>
+                            <p className="text-sm text-cyan-300">Today&apos;s Progress</p>
                             <h2 className="mt-2 text-6xl font-black">{totalAmountLiter}L</h2>
                             <p className="mt-2 text-slate-400">
                                 {totalAmountMl} ml of {waterGoalMl} ml goal
@@ -421,3 +421,4 @@ export default function WaterPage() {
         </DashboardShell>
     );
 }
+

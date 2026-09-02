@@ -1,0 +1,10 @@
+﻿apiVersion: v1
+kind: Namespace
+metadata:
+  name: vitalsync-stage
+  labels:
+    app.kubernetes.io/part-of: vitalsync
+    environment: staging
+
+
+
