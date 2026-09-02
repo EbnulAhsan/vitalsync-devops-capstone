@@ -1,498 +1,245 @@
-# VitalSync DevOps Capstone
+<div align="center">
 
-A production-style CI/CD, containerization, Kubernetes, and GitOps delivery implementation for the **VitalSync full-stack health tracking platform**.
+# 🩺 VitalSync — DevOps Capstone
 
-This repository demonstrates a complete and auditable promotion path across **Development**, **Staging**, and **Production** environments. It uses GitHub Actions for continuous integration and environment-aware delivery, Docker and GitHub Container Registry for versioned application images, Kubernetes for workload and service delivery, and Argo CD for GitOps reconciliation on an AWS-hosted K3s cluster.
+**Production-style CI/CD, containerization, Kubernetes, and GitOps delivery for a real full-stack health tracking platform.**
 
-> The assignment reference application was replaced with the existing VitalSync full-stack application to demonstrate the same required DevOps controls against a more realistic frontend, backend, database, authentication, and dashboard workload.
+[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-K3s-326CE5?logo=kubernetes&logoColor=white)](#kubernetes-delivery)
+[![Argo CD](https://img.shields.io/badge/GitOps-Argo%20CD-EF7B4D?logo=argo&logoColor=white)](#argo-cd-gitops)
+[![Docker](https://img.shields.io/badge/Containers-GHCR-2496ED?logo=docker&logoColor=white)](#image-versioning)
+[![AWS](https://img.shields.io/badge/Cloud-AWS%20EC2-FF9900?logo=amazonaws&logoColor=white)](#aws-and-runtime-environment)
+[![License](https://img.shields.io/badge/status-verified-brightgreen)](#current-status)
 
----
-
-## Repository
-
-- **GitHub:** https://github.com/EbnulAhsan/vitalsync-devops-capstone
-- **Frontend:** Next.js
-- **Backend:** Node.js, Express, TypeScript, Prisma
-- **Database:** PostgreSQL
-- **Container Registry:** GitHub Container Registry, GHCR
-- **Kubernetes distribution:** K3s
-- **GitOps controller:** Argo CD
-- **Cloud environment:** AWS EC2
+</div>
 
 ---
 
-## Assignment Coverage
+## Overview
 
-This project implements all required delivery areas:
+This repository demonstrates a complete, auditable promotion path across **Development → Staging → Production** for the **VitalSync** health-tracking platform. It replaces a toy reference app with a real frontend, backend, database, authentication layer, and dashboard — giving stronger evidence that the delivery pipeline works beyond a minimal demo.
 
-1. Long-lived `dev`, `stage`, and `prod` branches
-2. Continuous integration on pushes and pull requests
-3. Manually triggered Development deployment
-4. Manually triggered Staging deployment
-5. Automatically triggered Production deployment when a pull request is opened against `prod`
-6. Separate Development and Production Docker build strategies
-7. Commit-identifiable image tags
-8. Kubernetes Deployments and Services without Ingress
-9. Environment isolation through Kubernetes namespaces
-10. Argo CD reconciliation for Development, Staging, and Production
-11. End-to-end verification of registration, login, health check, and dashboard access
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js |
+| Backend | Node.js, Express, TypeScript, Prisma |
+| Database | PostgreSQL |
+| Container Registry | GitHub Container Registry (GHCR) |
+| Orchestration | Kubernetes (K3s) |
+| GitOps | Argo CD |
+| Cloud | AWS EC2 |
+| Repository | [github.com/EbnulAhsan/vitalsync-devops-capstone](https://github.com/EbnulAhsan/vitalsync-devops-capstone) |
+
+### Assignment coverage at a glance
+
+- ✅ Long-lived `dev`, `stage`, `prod` branches
+- ✅ Continuous integration on every push and pull request
+- ✅ Manually triggered Development deployment
+- ✅ Manually triggered Staging deployment
+- ✅ Automatically triggered Production deployment on PR open against `prod`
+- ✅ Separate Development / Production Docker build strategies
+- ✅ Commit-identifiable image tags
+- ✅ Kubernetes Deployments + Services, **no Ingress**
+- ✅ Namespace-level environment isolation
+- ✅ Argo CD reconciliation for all three environments
+- ✅ End-to-end verification: registration, login, health check, dashboard access
 
 ---
 
 ## Architecture
 
-```text
-Developer / Feature Work
-          |
-          v
-      dev branch
-          |
-          | Manual GitHub Actions deployment
-          v
-  GHCR dev-<commit> images
-          |
-          v
- kubernetes/dev manifests
-          |
-          v
- Argo CD -> vitalsync-dev
-          |
-          | Validated promotion
-          v
-     stage branch
-          |
-          | Manual GitHub Actions deployment
-          v
- GHCR stage-<commit> images
-          |
-          v
-kubernetes/stage manifests
-          |
-          v
-Argo CD -> vitalsync-stage
-          |
-          | Pull request opened against prod
-          v
-Automatic Production workflow
-          |
-          v
- GHCR prod-<commit> images
-          |
-          v
- kubernetes/prod manifests
-          |
-          v
- Argo CD -> vitalsync-prod
+```mermaid
+flowchart TD
+    Dev["👩‍💻 Developer / Feature Work"] --> DevBranch["dev branch"]
+
+    DevBranch -->|"Manual dispatch"| DevBuild["GitHub Actions\nBuild + Push"]
+    DevBuild --> DevImg["GHCR: dev-&lt;sha&gt;"]
+    DevImg --> DevManifest["kubernetes/dev"]
+    DevManifest --> DevArgo["Argo CD → vitalsync-dev"]
+
+    DevArgo -->|"Validated promotion"| StageBranch["stage branch"]
+    StageBranch -->|"Manual dispatch"| StageBuild["GitHub Actions\nBuild + Push"]
+    StageBuild --> StageImg["GHCR: stage-&lt;sha&gt;"]
+    StageImg --> StageManifest["kubernetes/stage"]
+    StageManifest --> StageArgo["Argo CD → vitalsync-stage"]
+
+    StageArgo -->|"PR opened against prod"| ProdTrigger["Automatic Production Workflow"]
+    ProdTrigger --> ProdBuild["Build optimized images"]
+    ProdBuild --> ProdImg["GHCR: prod-&lt;sha&gt;"]
+    ProdImg --> ProdManifest["kubernetes/prod"]
+    ProdManifest --> ProdArgo["Argo CD → vitalsync-prod"]
+
+    style Dev fill:#e8f0fe,stroke:#4285F4
+    style DevArgo fill:#e6f4ea,stroke:#34A853
+    style StageArgo fill:#fef7e0,stroke:#FBBC04
+    style ProdArgo fill:#fce8e6,stroke:#EA4335
 ```
 
-Each environment contains an isolated PostgreSQL, backend, and frontend deployment. Kubernetes Services provide internal database connectivity and NodePort access for the application. No Ingress resource is used, as required by the assignment.
+Each environment runs an isolated PostgreSQL instance, backend, and frontend. Kubernetes Services provide internal database connectivity and NodePort access to the application — **no Ingress resource is used**, as required by the assignment.
 
 ---
 
-## Branching and Promotion Strategy
+## Branching & Promotion Strategy
 
-### Long-lived branches
-
-- **`dev`**: integration branch for active development and Development validation
-- **`stage`**: validated candidate branch for Staging and Production promotion
-- **`prod`**: production release history and pull request promotion target
-- **`main`**: retained as an additional repository branch, but the assessed environment path is `dev -> stage -> prod`
-
-### Intended promotion path
-
-```text
-feature work -> dev -> stage -> pull request against prod
+```mermaid
+gitGraph
+    commit id: "init"
+    branch dev
+    checkout dev
+    commit id: "feature work"
+    commit id: "dev-a25768b"
+    branch stage
+    checkout stage
+    commit id: "stage-3507d90"
+    branch prod
+    checkout prod
+    commit id: "PR opened"
+    commit id: "prod-53f2c13"
 ```
 
-Development and Staging do not deploy merely because code reaches their branches. A human must explicitly run the relevant GitHub Actions workflow. Production follows the assignment's non-negotiable rule: deployment starts automatically when a pull request is **opened against the `prod` branch**.
+| Branch | Purpose |
+|---|---|
+| `dev` | Integration branch for active development and Development validation |
+| `stage` | Validated release candidate for Staging and Production promotion |
+| `prod` | Production release history and pull-request promotion target |
+| `main` | Retained as an additional branch; the assessed path is `dev → stage → prod` |
 
-Pull requests provide an inspectable production promotion record. GitHub Actions bot commits provide an auditable link between a source commit, its container image version, and the desired Kubernetes state stored in Git.
+**Promotion path:** `feature work → dev → stage → pull request against prod`
+
+Development and Staging never deploy just because code lands on the branch — a human must explicitly run the workflow. Production follows the assignment's non-negotiable rule: it deploys automatically the moment a pull request is **opened** against `prod`.
 
 ---
 
 ## Continuous Integration
 
-Workflow:
+**Workflow:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — runs on every push and pull request touching `dev`, `stage`, or `prod`.
 
-```text
-.github/workflows/ci.yml
+```mermaid
+flowchart LR
+    A[Push / PR] --> B[Frontend: lint + build]
+    A --> C[Backend: lint + Prisma generate + build]
+    B --> D[Docker build validation ×4]
+    C --> D
+    D --> E{All pass?}
+    E -->|Yes| F[✅ CI green]
+    E -->|No| G[❌ Fails visibly in Actions]
 ```
 
-The `VitalSync CI` workflow runs on pushes and pull requests involving:
+| Stage | Checks |
+|---|---|
+| Frontend | `npm ci`, lint, Next.js build |
+| Backend | `npm ci`, Prisma Client generation, lint, TypeScript build |
+| Docker | Validates Frontend Dev, Frontend Prod, Backend Dev, Backend Prod images build cleanly (not pushed) |
 
-- `dev`
-- `stage`
-- `prod`
-
-### Frontend validation
-
-- Installs dependencies with `npm ci`
-- Runs frontend linting
-- Builds the Next.js application
-
-### Backend validation
-
-- Installs dependencies with `npm ci`
-- Generates the Prisma Client
-- Runs backend linting
-- Builds the TypeScript backend
-
-### Docker build validation
-
-After frontend and backend validation succeed, CI validates four container builds:
-
-- Frontend Development image
-- Frontend Production image
-- Backend Development image
-- Backend Production image
-
-CI does not push these validation images. Publishing is handled only by the environment delivery workflows. A failed lint, application build, Prisma generation, or Docker build causes the workflow to fail visibly in GitHub Actions.
-
-### Validation decision
-
-The project uses linting, application compilation, Prisma Client generation, and complete Docker build validation as the required CI gate. These checks verify that both application components compile and that all Development and Production container definitions remain buildable before delivery.
+CI never publishes images — that responsibility belongs solely to the environment delivery workflows.
 
 ---
 
 ## Continuous Delivery
 
-### Development: manual deployment
+### 🔧 Development — manual
 
-Workflow:
+`workflow_dispatch` → checks out `dev` → builds with `Dockerfile.dev` → pushes `dev-<sha>` → updates `kubernetes/dev` → bot commit → Argo CD reconciles.
 
-```text
-.github/workflows/publish-dev-images.yml
-```
+| Verified version | GitOps commit |
+|---|---|
+| `dev-a25768b` | `28297f6` |
 
-Trigger:
+### 🧪 Staging — manual
 
-```yaml
-on:
-  workflow_dispatch:
-```
+`workflow_dispatch` → checks out `stage` → builds optimized images with `Dockerfile.prod` (frontend points at Staging backend) → pushes `stage-<sha>` → updates `kubernetes/stage` → bot commit → Argo CD reconciles.
 
-A human starts this workflow from GitHub Actions. The workflow:
+| Verified version | GitOps commit |
+|---|---|
+| `stage-3507d90` | `b42707d` |
 
-1. Checks out the `dev` branch
-2. Builds frontend and backend using `Dockerfile.dev`
-3. Pushes images to GHCR with `dev-<short-commit-sha>` tags
-4. Updates image tags in `kubernetes/dev`
-5. Creates a GitHub Actions bot commit on `dev`
-6. Allows Argo CD to reconcile the Development environment
-
-Verified Development version:
-
-```text
-dev-a25768b
-```
-
-Verified GitOps manifest commit:
-
-```text
-28297f6
-```
-
-### Staging: manual deployment
-
-Workflow:
-
-```text
-.github/workflows/publish-stage-images.yml
-```
-
-Trigger:
-
-```yaml
-on:
-  workflow_dispatch:
-```
-
-A human starts this workflow after selecting a validated Staging candidate. The workflow:
-
-1. Checks out the `stage` branch
-2. Builds optimized frontend and backend images using `Dockerfile.prod`
-3. Configures the frontend to use the Staging backend
-4. Pushes images with `stage-<short-commit-sha>` tags
-5. Updates image tags in `kubernetes/stage`
-6. Creates a GitHub Actions bot commit on `stage`
-7. Allows Argo CD to reconcile the Staging environment
-
-Verified Staging version:
-
-```text
-stage-3507d90
-```
-
-Verified GitOps manifest commit:
-
-```text
-b42707d
-```
-
-### Production: automatic deployment on PR open
-
-Workflow:
-
-```text
-.github/workflows/deploy-prod-on-pr.yml
-```
-
-Trigger:
+### 🚀 Production — automatic on PR open
 
 ```yaml
 on:
   pull_request:
-    branches:
-      - prod
-    types:
-      - opened
+    branches: [prod]
+    types: [opened]
 ```
 
-Opening a pull request against `prod` automatically:
+Opening a PR against `prod` automatically builds optimized images from `stage`, pushes `prod-<sha>`, updates `kubernetes/prod`, commits the GitOps change, and lets Argo CD reconcile — **no manual step required afterward**.
 
-1. Checks out the validated `stage` source
-2. Builds optimized frontend and backend Production images
-3. Pushes images with `prod-<short-commit-sha>` tags
-4. Updates `kubernetes/prod` image references
-5. Creates a GitHub Actions bot GitOps commit
-6. Allows Argo CD to reconcile Production automatically
-
-No separate manual deployment action is required after the production pull request is opened.
-
-Verified Production workflow runs:
-
-- Pull request `#4`: successful
-- Pull request `#5`: successful
-
-Latest verified Production version:
-
-```text
-prod-53f2c13
-```
-
-Latest verified Production GitOps bot commit:
-
-```text
-e5fec93
-```
+| Verified PRs | Latest version | Latest GitOps commit |
+|---|---|---|
+| `#4`, `#5` (both successful) | `prod-53f2c13` | `e5fec93` |
 
 ---
 
 ## Production GitOps Branch Decision
 
-The Production Argo CD application tracks:
+The Production Argo CD Application intentionally tracks:
 
 ```yaml
 targetRevision: stage
 path: kubernetes/prod
 ```
 
-This is an intentional implementation decision based on the assignment requirement that Production deployment occur as a consequence of a pull request being **opened**, rather than after the pull request is merged.
+The assignment requires Production to deploy when a PR is **opened**, not merged. `stage` is the validated release candidate; when a PR opens against `prod`, the workflow builds from that source and commits immutable image references to `kubernetes/prod`, which Argo CD picks up immediately. The PR and its merge still preserve the formal promotion and release record on `prod`. This cleanly separates two concerns:
 
-The `stage` branch represents the validated release candidate. When a pull request is opened against `prod`, the Production workflow builds from that validated source and commits the resulting immutable Production image references under `kubernetes/prod`. Argo CD observes that Git change and deploys it immediately. The pull request and subsequent merge still preserve the formal production promotion and release history in `prod`.
-
-This design separates two concerns:
-
-- The pull request against `prod` is the automatic release trigger and review record
-- The GitOps manifest commit is the desired-state signal consumed by Argo CD
-
-The approach was selected to satisfy the exact trigger timing while retaining an auditable relationship among the pull request, source commit, image tag, GitOps commit, and running workload.
+- **The pull request** → automatic release trigger and review record
+- **The GitOps commit** → desired-state signal Argo CD consumes
 
 ---
 
 ## Containerization Strategy
 
-### Frontend Development image
-
-File:
-
-```text
-frontend/Dockerfile.dev
-```
-
-Characteristics:
-
-- `NODE_ENV=development`
-- Full dependency installation
-- Runs the Next.js development server
-- Binds to `0.0.0.0`
-- Runs as the non-root `node` user
-
-### Frontend Production image
-
-File:
-
-```text
-frontend/Dockerfile.prod
-```
-
-Characteristics:
-
-- Multi-stage build
-- Builds optimized Next.js standalone output
-- Copies only required runtime artifacts
-- Uses a dedicated non-root `nextjs` user
-- Runs `node server.js`
-
-### Backend Development image
-
-File:
-
-```text
-backend/Dockerfile.dev
-```
-
-Characteristics:
-
-- `NODE_ENV=development`
-- Full dependencies
-- Prisma Client generation
-- Runs the backend development command
-- Runs as the non-root `node` user
-
-### Backend Production image
-
-File:
-
-```text
-backend/Dockerfile.prod
-```
-
-Characteristics:
-
-- Multi-stage build
-- Generates Prisma Client
-- Compiles TypeScript into `dist`
-- Prunes development dependencies
-- Copies only required runtime artifacts
-- Runs as the non-root `node` user
-- Starts with `node dist/server.js`
+| Image | Base behavior | Runs as |
+|---|---|---|
+| `frontend/Dockerfile.dev` | Full deps, Next.js dev server, binds `0.0.0.0` | non-root `node` |
+| `frontend/Dockerfile.prod` | Multi-stage, standalone Next.js output, runtime-only artifacts | non-root `nextjs` |
+| `backend/Dockerfile.dev` | Full deps, Prisma generate, dev command | non-root `node` |
+| `backend/Dockerfile.prod` | Multi-stage, Prisma generate, TS → `dist`, pruned deps | non-root `node` |
 
 ---
 
 ## Image Versioning
-
-Images are stored in GitHub Container Registry:
 
 ```text
 ghcr.io/ebnulahsan/vitalsync-frontend
 ghcr.io/ebnulahsan/vitalsync-backend
 ```
 
-Tag pattern:
+**Tag pattern:** `<environment>-<7-char-commit-sha>` → e.g. `dev-a25768b`, `stage-3507d90`, `prod-53f2c13`
 
-```text
-<environment>-<7-character-commit-sha>
-```
-
-Examples:
-
-```text
-dev-a25768b
-stage-3507d90
-prod-53f2c13
-```
-
-The running image can therefore be mapped directly to its environment and source commit. The workflows also attach OCI labels for:
-
-- Repository source URL
-- Source revision
-- Image version
-- Deployment environment
-
-No deployment depends only on a mutable `latest` tag.
+Every image is traceable to its exact source commit via OCI labels (source URL, revision, version, environment). No deployment relies on a mutable `latest` tag.
 
 ---
 
 ## Kubernetes Delivery
 
-Manifests are organized by environment:
-
 ```text
 kubernetes/
-├── dev/
-│   ├── namespace.yaml
-│   ├── postgres.yaml
-│   ├── backend.yaml
-│   └── frontend.yaml
-├── stage/
-│   ├── namespace.yaml
-│   ├── postgres.yaml
-│   ├── backend.yaml
-│   └── frontend.yaml
-└── prod/
-    ├── namespace.yaml
-    ├── postgres.yaml
-    ├── backend.yaml
-    └── frontend.yaml
+├── dev/     { namespace, postgres, backend, frontend }
+├── stage/   { namespace, postgres, backend, frontend }
+└── prod/    { namespace, postgres, backend, frontend }
 ```
 
-### Namespaces
+**Namespaces:** `vitalsync-dev` · `vitalsync-stage` · `vitalsync-prod`
 
-```text
-vitalsync-dev
-vitalsync-stage
-vitalsync-prod
-```
+**Production services:**
 
-### Resources per environment
+| Service | Type | Port |
+|---|---|---|
+| `postgres` | ClusterIP | 5432 |
+| `vitalsync-backend` | NodePort | 5000 → 30052 |
+| `vitalsync-frontend` | NodePort | 3000 → 30082 |
 
-- PostgreSQL Deployment
-- PostgreSQL ClusterIP Service
-- Backend Deployment
-- Backend Service
-- Frontend Deployment
-- Frontend Service
-
-Only Kubernetes workload and networking resources required by the assignment are used. **No Ingress resource is implemented.**
-
-### Production services
-
-```text
-postgres             ClusterIP   5432/TCP
-vitalsync-backend    NodePort    5000:30052/TCP
-vitalsync-frontend   NodePort    3000:30082/TCP
-```
-
-### Secrets
-
-Each environment uses an independent Kubernetes Secret. Production uses:
-
-```text
-vitalsync-prod-secrets
-```
-
-Keys:
-
-```text
-database-url
-jwt-access-secret
-postgres-password
-```
-
-Secret values are created directly in the cluster and are not committed to Git.
+Each environment has its own Kubernetes Secret (`database-url`, `jwt-access-secret`, `postgres-password`), created directly in-cluster and never committed to Git.
 
 ---
 
 ## Argo CD GitOps
 
-Application declarations:
-
 ```text
-argocd/dev-application.yaml
-argocd/stage-application.yaml
-argocd/prod-application.yaml
+vitalsync-dev   ← dev branch   ← kubernetes/dev   ← vitalsync-dev
+vitalsync-stage ← stage branch ← kubernetes/stage ← vitalsync-stage
+vitalsync-prod  ← stage branch ← kubernetes/prod  ← vitalsync-prod
 ```
-
-Environment mapping:
-
-```text
-vitalsync-dev   -> dev branch   -> kubernetes/dev   -> vitalsync-dev
-vitalsync-stage -> stage branch -> kubernetes/stage -> vitalsync-stage
-vitalsync-prod  -> stage branch -> kubernetes/prod  -> vitalsync-prod
-```
-
-Each Argo CD Application enables:
 
 ```yaml
 syncPolicy:
@@ -503,53 +250,39 @@ syncPolicy:
     - CreateNamespace=true
 ```
 
-- **Automated sync** reconciles Git changes without direct workload mutation
-- **Prune** removes resources deleted from the desired state
-- **Self-heal** corrects cluster drift
-- **CreateNamespace** permits environment namespace creation when needed
-
-Argo CD is the system responsible for reconciling the declared Git state with the running Kubernetes cluster.
+- **Automated sync** — reconciles Git changes without direct workload mutation
+- **Prune** — removes resources deleted from desired state
+- **Self-heal** — corrects cluster drift
+- **CreateNamespace** — permits namespace creation on demand
 
 ---
 
-## AWS and Runtime Environment
+## AWS & Runtime Environment
 
-The demonstration environment runs on an AWS EC2 instance using K3s.
-
-Verified infrastructure:
-
-```text
-Instance ID: i-084adc2b98585d54e
-Region: ap-southeast-1
-K3s node role: control-plane
-K3s status: Ready
-Kubernetes version: v1.36.4+k3s1
-```
-
-At the time of demonstration, the application was reachable through:
+| Item | Value |
+|---|---|
+| Instance ID | `i-084adc2b98585d54e` |
+| Region | `ap-southeast-1` |
+| K3s role | control-plane |
+| K3s status | Ready |
+| Kubernetes version | `v1.36.4+k3s1` |
 
 ```text
 Production frontend: http://47.129.153.103:30082
 Production backend:  http://47.129.153.103:30052
-Health endpoint:     http://47.129.153.103:30052/health
+Health endpoint:      http://47.129.153.103:30052/health
 ```
 
-> The public IP is part of a temporary assignment environment and may become unavailable after the EC2 instance is stopped, restarted, or removed.
-
-AWS Security Group access to the application NodePorts was restricted to the tester's public IPv4 address using `/32` rules during verification.
+> ⚠️ The public IP belongs to a temporary assignment environment and may go offline if the EC2 instance is stopped, restarted, or removed. NodePort access was restricted to the tester's `/32` IPv4 during verification.
 
 ---
 
 ## Verified Production State
 
-Argo CD:
-
 ```text
 NAME             SYNC STATUS   HEALTH STATUS
 vitalsync-prod   Synced        Healthy
 ```
-
-Kubernetes workloads:
 
 ```text
 postgres             1/1   Running   0 restarts
@@ -557,30 +290,18 @@ vitalsync-backend    1/1   Running   0 restarts
 vitalsync-frontend   1/1   Running   0 restarts
 ```
 
-Runtime application images:
-
 ```text
 ghcr.io/ebnulahsan/vitalsync-backend:prod-53f2c13
 ghcr.io/ebnulahsan/vitalsync-frontend:prod-53f2c13
 ```
 
-Backend health response:
-
 ```json
-{
-  "success": true,
-  "status": "healthy"
-}
+{ "success": true, "status": "healthy" }
 ```
 
-Functional checks completed:
+**Functional checks:** frontend `200 OK` · backend health `200 OK` · registration succeeded · login succeeded · authenticated dashboard loaded · zero restarts across all workloads during final verification.
 
-- Production frontend returned HTTP `200 OK`
-- Production backend health endpoint returned HTTP `200 OK`
-- User registration succeeded
-- User login succeeded
-- Authenticated dashboard loaded successfully
-- PostgreSQL, backend, and frontend remained Ready with zero restarts during final verification
+> 📸 *Add screenshots here for extra polish — e.g. `docs/dashboard.png`, `docs/argocd-ui.png`, `docs/actions-run.png` — and reference them with `![Argo CD Dashboard](docs/argocd-ui.png)`.*
 
 ---
 
@@ -588,12 +309,11 @@ Functional checks completed:
 
 ```text
 .
-├── .github/
-│   └── workflows/
-│       ├── ci.yml
-│       ├── publish-dev-images.yml
-│       ├── publish-stage-images.yml
-│       └── deploy-prod-on-pr.yml
+├── .github/workflows/
+│   ├── ci.yml
+│   ├── publish-dev-images.yml
+│   ├── publish-stage-images.yml
+│   └── deploy-prod-on-pr.yml
 ├── argocd/
 │   ├── dev-application.yaml
 │   ├── stage-application.yaml
@@ -619,77 +339,32 @@ Functional checks completed:
 
 ## Reproducing the Delivery Flow
 
-### 1. Validate a change
-
-Push a change or open a pull request involving `dev`, `stage`, or `prod`. The `VitalSync CI` workflow validates frontend, backend, and Docker builds.
-
-### 2. Deploy Development manually
-
-From GitHub Actions:
-
-```text
-Actions -> Publish Development Images -> Run workflow
-```
-
-The workflow publishes `dev-<sha>` images and updates `kubernetes/dev`.
-
-### 3. Deploy Staging manually
-
-After promoting validated code to `stage`:
-
-```text
-Actions -> Publish Staging Images -> Run workflow
-```
-
-The workflow publishes `stage-<sha>` images and updates `kubernetes/stage`.
-
-### 4. Deploy Production automatically
-
-Open a pull request with:
-
-```text
-base: prod
-compare: stage
-```
-
-Opening the pull request automatically runs `Deploy Production on PR`, publishes `prod-<sha>` images, updates `kubernetes/prod`, and causes Argo CD to reconcile Production.
+1. **Validate** — push or open a PR touching `dev`, `stage`, or `prod`; `VitalSync CI` runs automatically.
+2. **Deploy Dev** — `Actions → Publish Development Images → Run workflow`
+3. **Deploy Staging** — promote to `stage`, then `Actions → Publish Staging Images → Run workflow`
+4. **Deploy Production** — open a PR (`base: prod`, `compare: stage`) → `Deploy Production on PR` runs automatically → Argo CD reconciles Production
 
 ---
 
-## Useful Verification Commands
-
-Run these commands from a host with cluster access.
-
-### Argo CD applications
+## Verification Commands
 
 ```bash
+# Argo CD applications
 kubectl get applications -n argocd
-```
 
-### Production pods and services
-
-```bash
+# Production pods and services
 kubectl get pods -n vitalsync-prod
 kubectl get services -n vitalsync-prod
-```
 
-### Production runtime images
-
-```bash
+# Production runtime images
 kubectl get deployment vitalsync-backend vitalsync-frontend \
   -n vitalsync-prod \
   -o jsonpath='{range .items[*]}{.metadata.name}{" => "}{.spec.template.spec.containers[0].image}{"\n"}{end}'
-```
 
-### Backend health
-
-```bash
+# Backend health
 curl -i http://localhost:30052/health
-```
 
-### Verify that no Ingress manifests exist
-
-```bash
+# Confirm no Ingress manifests exist
 grep -R "kind: Ingress" kubernetes || true
 ```
 
@@ -697,73 +372,90 @@ grep -R "kind: Ingress" kubernetes || true
 
 ## Evidence Checklist
 
-The following evidence is appropriate for assignment review:
-
-- GitHub branch list showing `dev`, `stage`, and `prod`
-- Successful `VitalSync CI` workflow with frontend, backend, and Docker jobs
-- Manually triggered Development workflow success
-- Manually triggered Staging workflow success
-- Automatically triggered Production workflow from a pull request opened against `prod`
-- GHCR or runtime evidence showing commit-identifiable image tags
-- Kubernetes resource inventory showing Deployments and Services without Ingress
-- Argo CD applications showing Development, Staging, and Production as `Synced` and `Healthy`
-- Production pods showing `1/1 Running` and zero restarts
-- Production Services showing NodePorts `30052` and `30082`
-- Backend `/health` response showing HTTP `200 OK`
-- Production dashboard visible in a browser
-- AWS EC2 and K3s node evidence
+- [x] `dev`, `stage`, `prod` branches present
+- [x] `VitalSync CI` green across frontend, backend, Docker jobs
+- [x] Manual Development deployment succeeded
+- [x] Manual Staging deployment succeeded
+- [x] Automatic Production deployment fired from PR open
+- [x] Commit-identifiable image tags in GHCR / runtime
+- [x] Kubernetes Deployments + Services, no Ingress
+- [x] Argo CD: all three environments `Synced` / `Healthy`
+- [x] Production pods `1/1 Running`, zero restarts
+- [x] NodePorts `30052` / `30082` confirmed
+- [x] `/health` returns `200 OK`
+- [x] Production dashboard verified in browser
+- [x] AWS EC2 + K3s node evidence collected
 
 ---
 
-## Engineering Decisions Summary
+## Engineering Decisions
 
-### Why use VitalSync instead of the reference chat application?
+<details>
+<summary><strong>Why VitalSync instead of the reference chat app?</strong></summary>
+<br>
+The delivery requirements are application-independent. VitalSync brings authentication, a real database, migrations, health checks, and an authenticated dashboard — stronger evidence the pipeline works beyond a minimal demo.
+</details>
 
-The delivery requirements are application-independent. VitalSync provides a more realistic full-stack workload with authentication, a database, migrations, health checks, and an authenticated dashboard. This provides stronger evidence that the delivery platform works beyond a minimal demo.
+<details>
+<summary><strong>Why are Development and Staging deployments manual?</strong></summary>
+<br>
+The assignment requires an explicit human decision before code reaches these environments. <code>workflow_dispatch</code> gives an auditable trigger while everything after approval — build, publish, manifest update, GitOps reconciliation — stays automated.
+</details>
 
-### Why are Development and Staging deployments manual?
+<details>
+<summary><strong>Why does Production deploy on PR <em>open</em>?</strong></summary>
+<br>
+The workflow listens specifically for <code>pull_request</code> events on <code>prod</code> with <code>type: opened</code> — implementing the required trigger exactly, with no separate manual production step.
+</details>
 
-The assignment requires a human decision before code reaches these running environments. `workflow_dispatch` provides an explicit, auditable action in GitHub Actions while preserving automated build, publication, manifest update, and GitOps reconciliation after approval.
+<details>
+<summary><strong>Why commit-SHA image tags?</strong></summary>
+<br>
+A tag like <code>prod-53f2c13</code> identifies both environment and exact source revision — supporting traceability, incident investigation, repeatable rollbacks, and long-term auditability.
+</details>
 
-### Why does Production deploy on PR open?
+<details>
+<summary><strong>Why separate Dev and Prod Dockerfiles?</strong></summary>
+<br>
+Development images prioritize fast iteration; Production images prioritize optimized multi-stage builds, minimal runtime artifacts, pruned dependencies, and non-root execution.
+</details>
 
-The production workflow listens specifically for `pull_request` events targeting `prod` with type `opened`. This directly implements the required behavior and avoids a separate manual production deployment action.
+<details>
+<summary><strong>Why NodePort instead of Ingress?</strong></summary>
+<br>
+Ingress was explicitly out of scope for this assignment. NodePort Services provide adequate exposure while staying within the required Kubernetes resource model.
+</details>
 
-### Why use commit SHA image tags?
-
-A tag such as `prod-53f2c13` identifies both the environment and the exact source revision. This supports traceability, incident investigation, repeatable rollbacks, and auditability months after deployment.
-
-### Why use separate Dev and Prod Dockerfiles?
-
-Development images prioritize rapid iteration and development commands. Production images prioritize optimized builds, minimal runtime artifacts, pruned dependencies, and non-root execution.
-
-### Why use NodePort instead of Ingress?
-
-Ingress was explicitly out of scope. NodePort Services provide adequate network exposure for the assignment demonstration while remaining within the required Kubernetes resource model.
-
-### Why use Argo CD automated sync after manual Dev and Stage approval?
-
-The human decision controls whether an image is published and whether Git desired state changes. After that decision, Argo CD automatically reconciles the approved Git state. This preserves both the manual environment gate and the GitOps requirement.
+<details>
+<summary><strong>Why automated Argo CD sync after manual Dev/Stage approval?</strong></summary>
+<br>
+The human gate controls whether an image is published and desired state changes in Git. After that decision, Argo CD reconciles automatically — preserving both the manual environment gate and the GitOps principle.
+</details>
 
 ---
 
 ## Security Considerations
 
-- Application containers run as non-root users
-- Kubernetes Secret values are not committed to Git
-- Development, Staging, and Production use isolated namespaces and Secrets
-- GitHub Actions uses the short-lived repository `GITHUB_TOKEN`
-- Workflow permissions are limited to the access required by each workflow
+- All application containers run as non-root users
+- Kubernetes Secret values are never committed to Git
+- Dev / Staging / Production use isolated namespaces and Secrets
+- GitHub Actions uses the short-lived, scope-limited `GITHUB_TOKEN`
 - GHCR image references are versioned and auditable
-- Production dependencies are pruned from the backend runtime image
-- AWS NodePort access was restricted to a specific tester IPv4 address during demonstration
+- Production backend runtime image has development dependencies pruned
+- AWS NodePort access was restricted to a specific tester IPv4 during demonstration
 
-For a longer-lived production system, additional controls would include TLS, a managed load balancer, External Secrets, persistent managed PostgreSQL, image vulnerability scanning, network policies, monitoring, alerting, backups, and formal protected-branch review policies.
+**For a longer-lived production system**, next steps would include TLS, a managed load balancer, External Secrets, managed PostgreSQL, image vulnerability scanning, network policies, monitoring/alerting, backups, and formal protected-branch review policies.
 
 ---
 
 ## Current Status
 
-**Required technical delivery is complete and verified.**
+> ✅ **Required technical delivery is complete and verified.**
 
-The project has demonstrated a real end-to-end change path through Development, Staging, and Production under the required manual and automatic trigger rules, with versioned images, Kubernetes delivery, and Argo CD reconciliation.
+A real end-to-end change path through Development, Staging, and Production has been demonstrated under the required manual and automatic trigger rules, with versioned images, Kubernetes delivery, and Argo CD reconciliation.
+
+<div align="center">
+
+*Built by [Ebnul Ahsan](https://github.com/EbnulAhsan)*
+
+</div>
