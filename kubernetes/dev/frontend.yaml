@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/ebnulahsan/vitalsync-frontend:dev-e7b407f
+          image: ghcr.io/ebnulahsan/vitalsync-frontend:dev-a25768b
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
