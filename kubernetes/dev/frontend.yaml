@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/ebnulahsan/vitalsync-frontend:dev-d752e42
+          image: ghcr.io/ebnulahsan/vitalsync-frontend:dev-e7b407f
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -75,6 +75,7 @@ spec:
       port: 3000
       targetPort: http
       nodePort: 30080
+
 
 
 
