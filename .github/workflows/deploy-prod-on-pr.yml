@@ -33,7 +33,7 @@ jobs:
             dockerfile: backend/Dockerfile.prod
 
     steps:
-      - name: Checkout stage branch
+      - name: Checkout validated stage source
         uses: actions/checkout@v4
         with:
           ref: stage
@@ -72,7 +72,7 @@ jobs:
             ${{ steps.image.outputs.name }}:prod-${{ steps.version.outputs.short_sha }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
             org.opencontainers.image.version=prod-${{ steps.version.outputs.short_sha }}
             dev.vitalsync.environment=production
           cache-from: type=gha
@@ -85,7 +85,7 @@ jobs:
     needs: publish-production-images
 
     steps:
-      - name: Checkout stage branch
+      - name: Checkout validated stage source
         uses: actions/checkout@v4
         with:
           ref: stage
@@ -112,6 +112,7 @@ jobs:
           SHORT_SHA=$(git rev-parse --short=7 HEAD)
           git commit -m "gitops: deploy production images prod-${SHORT_SHA}"
           git push origin HEAD:stage
+
 
 
 
