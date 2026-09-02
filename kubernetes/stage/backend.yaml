@@ -1,0 +1,102 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vitalsync-backend
+  namespace: vitalsync-stage
+  labels:
+    app: vitalsync-backend
+    environment: staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vitalsync-backend
+      environment: staging
+  template:
+    metadata:
+      labels:
+        app: vitalsync-backend
+        environment: staging
+    spec:
+      initContainers:
+        - name: database-migration
+          image: ghcr.io/ebnulahsan/vitalsync-backend:stage-a25768b
+          command:
+            - sh
+            - -c
+            - npx prisma migrate deploy
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vitalsync-stage-secrets
+                  key: database-url
+      containers:
+        - name: backend
+          image: ghcr.io/ebnulahsan/vitalsync-backend:stage-a25768b
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+          env:
+            - name: NODE_ENV
+              value: staging
+            - name: PORT
+              value: "5000"
+            - name: CLIENT_URL
+              value: http://47.129.153.103:30081
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vitalsync-stage-secrets
+                  key: database-url
+            - name: JWT_ACCESS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vitalsync-stage-secrets
+                  key: jwt-access-secret
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 25
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vitalsync-backend
+  namespace: vitalsync-stage
+  labels:
+    app: vitalsync-backend
+    environment: staging
+spec:
+  type: NodePort
+  selector:
+    app: vitalsync-backend
+    environment: staging
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+      nodePort: 30051
+
+
+
+
+
+
+
