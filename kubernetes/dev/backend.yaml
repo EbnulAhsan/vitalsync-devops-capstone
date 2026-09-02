@@ -44,7 +44,7 @@ spec:
             - name: PORT
               value: "5000"
             - name: CLIENT_URL
-              value: http://13.212.192.19:30080
+              value: http://47.129.153.103:30080
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -93,5 +93,6 @@ spec:
       port: 5000
       targetPort: http
       nodePort: 30050
+
 
 

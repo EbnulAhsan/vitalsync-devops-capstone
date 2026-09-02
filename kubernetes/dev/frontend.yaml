@@ -29,7 +29,7 @@ spec:
             - name: NODE_ENV
               value: development
             - name: NEXT_PUBLIC_API_URL
-              value: http://13.212.192.19:30050/api/v1
+              value: http://47.129.153.103:30050/api/v1
           startupProbe:
             tcpSocket:
               port: http
@@ -75,6 +75,7 @@ spec:
       port: 3000
       targetPort: http
       nodePort: 30080
+
 
 
 
